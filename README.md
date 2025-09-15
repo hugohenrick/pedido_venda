@@ -215,7 +215,3 @@ O arquivo `database_dump.sql` contém:
 - Configuração externa via INI
 - Interface intuitiva e responsiva
 
-
----
-**Desenvolvido para o Teste Técnico WK Technology**  
-*Demonstrando conhecimentos em Delphi, MySQL, POO e boas práticas de desenvolvimento*

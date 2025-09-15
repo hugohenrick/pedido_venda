@@ -55,6 +55,7 @@ type
     procedure btnCarregarPedidoClick(Sender: TObject);
     procedure btnCancelarPedidoClick(Sender: TObject);
     procedure btnNovoPedidoClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     FOrderService: TOrderService;
     FCurrentCustomer: TCustomer;
@@ -101,8 +102,6 @@ begin
 
     InitializeGrid;
 
-    btnNovoPedidoClick(nil);
-
     FEditingItemIndex := -1;
     UpdateButtonStates;
   except
@@ -125,6 +124,11 @@ begin
     VK_F10: btnAdicionarItemClick(nil);
     VK_ESCAPE: Close;
   end;
+end;
+
+procedure TFormPedidoVenda.FormShow(Sender: TObject);
+begin
+  btnNovoPedidoClick(nil);
 end;
 
 procedure TFormPedidoVenda.InitializeGrid;
@@ -241,7 +245,8 @@ begin
   else
   begin
     ShowError('Cliente não encontrado!');
-    edtCodigoCliente.SetFocus;
+    if edtCodigoCliente.CanFocus then
+      edtCodigoCliente.SetFocus;
   end;
 end;
 
@@ -255,12 +260,14 @@ begin
   begin
     edtDescricaoProduto.Text := Product.Description;
     edtValorUnitario.Text := FormatFloat('0.00', Product.SalePrice);
-    edtQuantidade.SetFocus;
+    if edtQuantidade.CanFocus then
+      edtQuantidade.SetFocus;
   end
   else
   begin
     ShowError('Produto não encontrado!');
-    edtCodigoProduto.SetFocus;
+    if edtCodigoProduto.CanFocus then
+      edtCodigoProduto.SetFocus;
   end;
 end;
 
@@ -274,21 +281,24 @@ begin
   if Trim(edtCodigoProduto.Text) = '' then
   begin
     ShowError('Informe o código do produto!');
-    edtCodigoProduto.SetFocus;
+    if edtCodigoProduto.CanFocus then
+      edtCodigoProduto.SetFocus;
     Exit;
   end;
 
   if not TryStrToFloat(edtQuantidade.Text, Qty) or (Qty <= 0) then
   begin
     ShowError('Informe uma quantidade válida!');
-    edtQuantidade.SetFocus;
+    if edtQuantidade.CanFocus then
+      edtQuantidade.SetFocus;
     Exit;
   end;
 
   if not TryStrToCurr(edtValorUnitario.Text, Price) or (Price < 0) then
   begin
     ShowError('Informe um valor unitário válido!');
-    edtValorUnitario.SetFocus;
+    if edtValorUnitario.CanFocus then
+      edtValorUnitario.SetFocus;
     Exit;
   end;
   
@@ -385,7 +395,8 @@ begin
   if not CharInSet(Key, ['0'..'9', ',', '.', #8, #13]) then
     Key := #0;
   if Key = #13 then
-    edtValorUnitario.SetFocus;
+    if edtValorUnitario.CanFocus then
+      edtValorUnitario.SetFocus;
 end;
 
 procedure TFormPedidoVenda.edtValorUnitarioKeyPress(Sender: TObject; var Key: Char);
@@ -410,7 +421,8 @@ begin
     ClearProductFields;
     RefreshGrid;
     UpdateButtonStates;
-    edtCodigoProduto.SetFocus;
+    if edtCodigoProduto.CanFocus then
+      edtCodigoProduto.SetFocus;
   except
     on E: Exception do
       ShowError('Erro ao adicionar item: ' + E.Message);
@@ -420,7 +432,8 @@ end;
 procedure TFormPedidoVenda.btnLimparItemClick(Sender: TObject);
 begin
   ClearProductFields;
-  edtCodigoProduto.SetFocus;
+  if edtCodigoProduto.CanFocus then
+    edtCodigoProduto.SetFocus;
 end;
 
 procedure TFormPedidoVenda.gridItensDblClick(Sender: TObject);
@@ -434,7 +447,8 @@ begin
   FEditingItemIndex := StrToInt(gridItens.Cells[5, SelectedRow]);
   SetProductFieldsFromItem(Items[FEditingItemIndex]);
   btnAdicionarItem.Caption := 'Atualizar Item';
-  edtQuantidade.SetFocus;
+  if edtQuantidade.CanFocus then
+    edtQuantidade.SetFocus;
 end;
 
 procedure TFormPedidoVenda.gridItensKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -546,7 +560,9 @@ begin
     edtNumeroPedido.Text := '0';
     RefreshGrid;
     UpdateButtonStates;
-    edtCodigoCliente.SetFocus;
+    
+    if edtCodigoCliente.CanFocus then
+      edtCodigoCliente.SetFocus;
   except
     on E: Exception do
       ShowError('Erro ao iniciar novo pedido: ' + E.Message);
