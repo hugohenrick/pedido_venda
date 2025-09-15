@@ -74,7 +74,7 @@ controle_numeracao (tabela, ultimo_numero)
 ## ⚙️ Configuração e Instalação
 
 ### Pré-requisitos
-- Delphi 10.4 Sydney ou superior
+- Delphi Seattle ou superior
 - MySQL 8.0 ou superior
 - FireDAC (incluído no Delphi)
 
