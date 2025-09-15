@@ -1,4 +1,4 @@
-# Sistema de Pedidos WK Technology
+# Sistema de Pedidos
 
 ## 📋 Descrição
 Sistema de gestão de pedidos de venda desenvolvido em Delphi com MySQL, seguindo alguns requisitos. Implementa conceitos de POO, padrões de arquitetura e boas práticas de desenvolvimento.
