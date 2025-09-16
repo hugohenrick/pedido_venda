@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.19, for Win64 (x86_64)
 --
--- Host: localhost    Database: pedidos_wk
+-- Host: localhost    Database: pedidos
 -- ------------------------------------------------------
 -- Server version	5.7.44-log
 
@@ -65,7 +65,7 @@ CREATE TABLE `controle_numeracao` (
 
 LOCK TABLES `controle_numeracao` WRITE;
 /*!40000 ALTER TABLE `controle_numeracao` DISABLE KEYS */;
-INSERT INTO `controle_numeracao` VALUES ('pedidos',4,'2025-09-15 04:00:53');
+INSERT INTO `controle_numeracao` VALUES ('pedidos',3,'2025-09-16 21:51:45');
 /*!40000 ALTER TABLE `controle_numeracao` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -97,7 +97,7 @@ CREATE TABLE `pedidos` (
 
 LOCK TABLES `pedidos` WRITE;
 /*!40000 ALTER TABLE `pedidos` DISABLE KEYS */;
-INSERT INTO `pedidos` VALUES (2,'2025-09-15 00:55:08',1,2499.99,'CANCELADO','2025-09-15 03:55:08'),(3,'2025-09-15 00:56:30',10,2749.97,'ATIVO','2025-09-15 03:56:30'),(4,'2025-09-15 01:00:53',1,2499.99,'ATIVO','2025-09-15 04:00:53');
+INSERT INTO `pedidos` VALUES (1,'2025-09-16 18:51:19',1,2499.99,'ATIVO','2025-09-16 21:51:19'),(2,'2025-09-16 18:51:36',5,6499.95,'ATIVO','2025-09-16 21:51:36'),(3,'2025-09-16 18:51:45',1,24999.90,'CANCELADO','2025-09-16 21:51:45');
 /*!40000 ALTER TABLE `pedidos` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -121,7 +121,7 @@ CREATE TABLE `pedidos_produtos` (
   KEY `idx_codigo_produto` (`codigo_produto`),
   CONSTRAINT `pedidos_produtos_ibfk_1` FOREIGN KEY (`numero_pedido`) REFERENCES `pedidos` (`numero_pedido`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `pedidos_produtos_ibfk_2` FOREIGN KEY (`codigo_produto`) REFERENCES `produtos` (`codigo`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -130,87 +130,9 @@ CREATE TABLE `pedidos_produtos` (
 
 LOCK TABLES `pedidos_produtos` WRITE;
 /*!40000 ALTER TABLE `pedidos_produtos` DISABLE KEYS */;
-INSERT INTO `pedidos_produtos` VALUES (1,2,1,1.000,2499.99,2499.99,'2025-09-15 03:55:08'),(6,3,10,1.000,449.99,449.99,'2025-09-15 03:57:32'),(7,3,5,1.000,1299.99,1299.99,'2025-09-15 03:57:32'),(8,3,12,1.000,999.99,999.99,'2025-09-15 03:57:32'),(11,4,1,1.000,2499.99,2499.99,'2025-09-15 04:01:08');
+INSERT INTO `pedidos_produtos` VALUES (1,1,1,1.000,2499.99,2499.99,'2025-09-16 21:51:19'),(2,2,5,5.000,1299.99,6499.95,'2025-09-16 21:51:36'),(3,3,1,10.000,2499.99,24999.90,'2025-09-16 21:51:45');
 /*!40000 ALTER TABLE `pedidos_produtos` ENABLE KEYS */;
 UNLOCK TABLES;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER tr_atualiza_valor_pedido 
-AFTER INSERT ON pedidos_produtos
-FOR EACH ROW
-BEGIN
-    UPDATE pedidos 
-    SET valor_total = (
-        SELECT COALESCE(SUM(vlr_total), 0) 
-        FROM pedidos_produtos 
-        WHERE numero_pedido = NEW.numero_pedido
-    )
-    WHERE numero_pedido = NEW.numero_pedido;
-END */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER tr_atualiza_valor_pedido_update
-AFTER UPDATE ON pedidos_produtos
-FOR EACH ROW
-BEGIN
-    UPDATE pedidos 
-    SET valor_total = (
-        SELECT COALESCE(SUM(vlr_total), 0) 
-        FROM pedidos_produtos 
-        WHERE numero_pedido = NEW.numero_pedido
-    )
-    WHERE numero_pedido = NEW.numero_pedido;
-END */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER tr_atualiza_valor_pedido_delete
-AFTER DELETE ON pedidos_produtos
-FOR EACH ROW
-BEGIN
-    UPDATE pedidos 
-    SET valor_total = (
-        SELECT COALESCE(SUM(vlr_total), 0) 
-        FROM pedidos_produtos 
-        WHERE numero_pedido = OLD.numero_pedido
-    )
-    WHERE numero_pedido = OLD.numero_pedido;
-END */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
 -- Table structure for table `produtos`
@@ -221,12 +143,11 @@ DROP TABLE IF EXISTS `produtos`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `produtos` (
   `codigo` int(11) NOT NULL AUTO_INCREMENT,
-  `descricao` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `descricao` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
   `preco_venda` decimal(10,2) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`codigo`),
-  KEY `idx_descricao` (`descricao`),
-  KEY `idx_preco` (`preco_venda`)
+  KEY `idx_descricao` (`descricao`)
 ) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -241,152 +162,8 @@ INSERT INTO `produtos` VALUES (1,'Notebook Dell Inspiron 15 3000',2499.99,'2025-
 UNLOCK TABLES;
 
 --
--- Temporary view structure for view `vw_pedidos_completos`
+-- Dumping routines for database 'pedidos'
 --
-
-DROP TABLE IF EXISTS `vw_pedidos_completos`;
-/*!50001 DROP VIEW IF EXISTS `vw_pedidos_completos`*/;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `vw_pedidos_completos` AS SELECT 
- 1 AS `numero_pedido`,
- 1 AS `data_emissao`,
- 1 AS `codigo_cliente`,
- 1 AS `nome_cliente`,
- 1 AS `cidade`,
- 1 AS `uf`,
- 1 AS `valor_total`,
- 1 AS `status`*/;
-SET character_set_client = @saved_cs_client;
-
---
--- Temporary view structure for view `vw_pedidos_itens`
---
-
-DROP TABLE IF EXISTS `vw_pedidos_itens`;
-/*!50001 DROP VIEW IF EXISTS `vw_pedidos_itens`*/;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `vw_pedidos_itens` AS SELECT 
- 1 AS `numero_pedido`,
- 1 AS `autoincrem`,
- 1 AS `codigo_produto`,
- 1 AS `descricao`,
- 1 AS `quantidade`,
- 1 AS `vlr_unitario`,
- 1 AS `vlr_total`*/;
-SET character_set_client = @saved_cs_client;
-
---
--- Dumping routines for database 'pedidos_wk'
---
-/*!50003 DROP PROCEDURE IF EXISTS `sp_cancelar_pedido` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_cancelar_pedido`(IN p_numero_pedido BIGINT)
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-    
-    START TRANSACTION;
-    
-    -- Marcar pedido como cancelado ao invés de deletar
-    UPDATE pedidos 
-    SET status = 'CANCELADO' 
-    WHERE numero_pedido = p_numero_pedido;
-    
-    -- Opcionalmente, deletar itens se requerido pelo negócio
-    -- DELETE FROM pedidos_produtos WHERE numero_pedido = p_numero_pedido;
-    
-    COMMIT;
-END ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `sp_proximo_numero_pedido` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_proximo_numero_pedido`(OUT proximo_numero BIGINT)
-BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-    
-    START TRANSACTION;
-    
-    UPDATE controle_numeracao 
-    SET ultimo_numero = ultimo_numero + 1,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE tabela = 'pedidos';
-    
-    SELECT ultimo_numero INTO proximo_numero
-    FROM controle_numeracao 
-    WHERE tabela = 'pedidos';
-    
-    COMMIT;
-END ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-
---
--- Final view structure for view `vw_pedidos_completos`
---
-
-/*!50001 DROP VIEW IF EXISTS `vw_pedidos_completos`*/;
-/*!50001 SET @saved_cs_client          = @@character_set_client */;
-/*!50001 SET @saved_cs_results         = @@character_set_results */;
-/*!50001 SET @saved_col_connection     = @@collation_connection */;
-/*!50001 SET character_set_client      = utf8mb4 */;
-/*!50001 SET character_set_results     = utf8mb4 */;
-/*!50001 SET collation_connection      = utf8mb4_general_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `vw_pedidos_completos` AS select `p`.`numero_pedido` AS `numero_pedido`,`p`.`data_emissao` AS `data_emissao`,`c`.`codigo` AS `codigo_cliente`,`c`.`nome` AS `nome_cliente`,`c`.`cidade` AS `cidade`,`c`.`uf` AS `uf`,`p`.`valor_total` AS `valor_total`,`p`.`status` AS `status` from (`pedidos` `p` join `clientes` `c` on((`p`.`codigo_cliente` = `c`.`codigo`))) order by `p`.`numero_pedido` desc */;
-/*!50001 SET character_set_client      = @saved_cs_client */;
-/*!50001 SET character_set_results     = @saved_cs_results */;
-/*!50001 SET collation_connection      = @saved_col_connection */;
-
---
--- Final view structure for view `vw_pedidos_itens`
---
-
-/*!50001 DROP VIEW IF EXISTS `vw_pedidos_itens`*/;
-/*!50001 SET @saved_cs_client          = @@character_set_client */;
-/*!50001 SET @saved_cs_results         = @@character_set_results */;
-/*!50001 SET @saved_col_connection     = @@collation_connection */;
-/*!50001 SET character_set_client      = utf8mb4 */;
-/*!50001 SET character_set_results     = utf8mb4 */;
-/*!50001 SET collation_connection      = utf8mb4_general_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `vw_pedidos_itens` AS select `pp`.`numero_pedido` AS `numero_pedido`,`pp`.`autoincrem` AS `autoincrem`,`pr`.`codigo` AS `codigo_produto`,`pr`.`descricao` AS `descricao`,`pp`.`quantidade` AS `quantidade`,`pp`.`vlr_unitario` AS `vlr_unitario`,`pp`.`vlr_total` AS `vlr_total` from (`pedidos_produtos` `pp` join `produtos` `pr` on((`pp`.`codigo_produto` = `pr`.`codigo`))) order by `pp`.`numero_pedido`,`pp`.`autoincrem` */;
-/*!50001 SET character_set_client      = @saved_cs_client */;
-/*!50001 SET character_set_results     = @saved_cs_results */;
-/*!50001 SET collation_connection      = @saved_col_connection */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -397,4 +174,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-09-15  1:13:29
+-- Dump completed on 2025-09-16 18:52:44

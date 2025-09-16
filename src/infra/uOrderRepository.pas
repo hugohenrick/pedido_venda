@@ -20,7 +20,7 @@ type
 
 implementation
 
-uses FireDAC.Stan.Param;
+uses FireDAC.Stan.Param, System.SysUtils;
 
 constructor TOrderRepositoryFD.Create(AConn: TFDConnection);
 begin
@@ -28,63 +28,97 @@ begin
 end;
 
 function TOrderRepositoryFD.NextNumber: Int64;
-var Q: TFDQuery;
+var 
+  QueryNumberControl: TFDQuery;
+  Transaction: TFDTransaction;
 begin
-  Q := TFDQuery.Create(nil);
+  Result := 0;
+  Transaction := TFDTransaction.Create(nil);
+  QueryNumberControl := TFDQuery.Create(nil);
   try
-    Q.Connection := FConn;
-    Q.SQL.Text := 'CALL sp_proximo_numero_pedido(@proximo)';
-    Q.ExecSQL;
+    try
+      Transaction.Connection := FConn;
+      QueryNumberControl.Connection := FConn;
+      QueryNumberControl.Transaction := Transaction;
     
-    Q.SQL.Text := 'SELECT @proximo as proximo_numero';
-    Q.Open;
-    Result := Q.FieldByName('proximo_numero').AsLargeInt;
+      Transaction.StartTransaction;
+
+      QueryNumberControl.SQL.Text := 'UPDATE controle_numeracao SET ultimo_numero = ultimo_numero + 1, ' +
+                                     'updated_at = CURRENT_TIMESTAMP WHERE tabela = ''pedidos''';
+      QueryNumberControl.ExecSQL;
+
+      QueryNumberControl.SQL.Text := 'SELECT ultimo_numero FROM controle_numeracao WHERE tabela = ''pedidos''';
+      QueryNumberControl.Open;
+
+      if not QueryNumberControl.Eof then
+        Result := QueryNumberControl.FieldByName('ultimo_numero').AsLargeInt;
+
+      Transaction.Commit;
+    except
+      on E: Exception do
+      begin
+        if Transaction.Active then
+          Transaction.Rollback;
+        raise Exception.Create('Erro ao gerar próximo número do pedido: ' + E.Message);
+      end;
+    end;
   finally
-    Q.Free;
+    QueryNumberControl.Free;
+    Transaction.Free;
   end;
+
 end;
 
 procedure TOrderRepositoryFD.Save(const Order: TOrder; const Items: TList<TOrderItem>);
-var QH, QI: TFDQuery; It: TOrderItem;
+var 
+  QueryOrderHeader, QueryOrderItems: TFDQuery; 
+  CurrentItem: TOrderItem;
+  TotalValue: Currency;
 begin
   FConn.StartTransaction;
   try
-    QH := TFDQuery.Create(nil);
-    QI := TFDQuery.Create(nil);
+    QueryOrderHeader := TFDQuery.Create(nil);
+    QueryOrderItems := TFDQuery.Create(nil);
     try
-      QH.Connection := FConn;
-      QI.Connection := FConn;
+      QueryOrderHeader.Connection := FConn;
+      QueryOrderItems.Connection := FConn;
 
-      QH.SQL.Text :=
-        'INSERT INTO pedidos(numero_pedido, codigo_cliente, data_emissao, valor_total) '+
-        'VALUES (:numero_pedido, :codigo_cliente, NOW(), :valor_total) '+
-        'ON DUPLICATE KEY UPDATE codigo_cliente = VALUES(codigo_cliente), valor_total = VALUES(valor_total)';
-      QH.ParamByName('numero_pedido').AsLargeInt := Order.Number;
-      QH.ParamByName('codigo_cliente').AsInteger  := Order.CustomerId;
-      QH.ParamByName('valor_total').AsCurrency := 0; //Será calculado pela trigger
-      QH.ExecSQL;
+      //Calcular valor total no Delphi
+      TotalValue := 0;
+      for CurrentItem in Items do
+        TotalValue := TotalValue + CurrentItem.Total;
+
+      QueryOrderHeader.SQL.Text :=
+        'INSERT INTO pedidos(numero_pedido, codigo_cliente, data_emissao, valor_total, status) '+
+        'VALUES (:numero_pedido, :codigo_cliente, NOW(), :valor_total, ''ATIVO'') '+
+        'ON DUPLICATE KEY UPDATE codigo_cliente = VALUES(codigo_cliente), valor_total = VALUES(valor_total), status = ''ATIVO''';
+      QueryOrderHeader.ParamByName('numero_pedido').AsLargeInt := Order.Number;
+      QueryOrderHeader.ParamByName('codigo_cliente').AsInteger  := Order.CustomerId;
+      QueryOrderHeader.ParamByName('valor_total').AsCurrency := TotalValue;
+      QueryOrderHeader.ExecSQL;
 
       //Limpar itens existentes do pedido antes de inserir novos
-      QI.SQL.Text := 'DELETE FROM pedidos_produtos WHERE numero_pedido = :numero_pedido';
-      QI.ParamByName('numero_pedido').AsLargeInt := Order.Number;
-      QI.ExecSQL;
+      QueryOrderItems.SQL.Text := 'DELETE FROM pedidos_produtos WHERE numero_pedido = :numero_pedido';
+      QueryOrderItems.ParamByName('numero_pedido').AsLargeInt := Order.Number;
+      QueryOrderItems.ExecSQL;
 
-      QI.SQL.Text :=
+      QueryOrderItems.SQL.Text :=
         'INSERT INTO pedidos_produtos(numero_pedido, codigo_produto, quantidade, vlr_unitario, vlr_total) '+
         'VALUES (:numero_pedido, :codigo_produto, :quantidade, :valor_unitario, :valor_total)';
-      for It in Items do
+      for CurrentItem in Items do
       begin
-        QI.ParamByName('numero_pedido').AsLargeInt := Order.Number;
-        QI.ParamByName('codigo_produto').AsInteger  := It.ProductId;
-        QI.ParamByName('quantidade').AsFloat    := It.Qty;
-        QI.ParamByName('valor_unitario').AsCurrency := It.UnitPrice;
-        QI.ParamByName('valor_total').AsCurrency := It.Total;
-        QI.ExecSQL;
+        QueryOrderItems.ParamByName('numero_pedido').AsLargeInt := Order.Number;
+        QueryOrderItems.ParamByName('codigo_produto').AsInteger  := CurrentItem.ProductId;
+        QueryOrderItems.ParamByName('quantidade').AsFloat    := CurrentItem.Qty;
+        QueryOrderItems.ParamByName('valor_unitario').AsCurrency := CurrentItem.UnitPrice;
+        QueryOrderItems.ParamByName('valor_total').AsCurrency := CurrentItem.Total;
+        QueryOrderItems.ExecSQL;
       end;
 
       FConn.Commit;
     finally
-      QH.Free; QI.Free;
+      QueryOrderHeader.Free; 
+      QueryOrderItems.Free;
     end;
   except
     FConn.Rollback;
@@ -93,131 +127,151 @@ begin
 end;
 
 function TOrderRepositoryFD.FindCustomer(Code: Integer): TCustomer;
-var Q: TFDQuery;
+var QueryCustomer: TFDQuery;
 begin
   FillChar(Result, SizeOf(Result), 0);
   
-  Q := TFDQuery.Create(nil);
+  QueryCustomer := TFDQuery.Create(nil);
   try
-    Q.Connection := FConn;
-    Q.SQL.Text := 'SELECT codigo, nome, cidade, uf FROM clientes WHERE codigo = :codigo';
-    Q.ParamByName('codigo').AsInteger := Code;
-    Q.Open;
+    QueryCustomer.Connection := FConn;
+    QueryCustomer.SQL.Text := 'SELECT codigo, nome, cidade, uf FROM clientes WHERE codigo = :codigo';
+    QueryCustomer.ParamByName('codigo').AsInteger := Code;
+    QueryCustomer.Open;
     
-    if not Q.IsEmpty then
+    if not QueryCustomer.IsEmpty then
     begin
-      Result.Code := Q.FieldByName('codigo').AsInteger;
-      Result.Name := Q.FieldByName('nome').AsString;
-      Result.City := Q.FieldByName('cidade').AsString;
-      Result.UF := Q.FieldByName('uf').AsString;
+      Result.Code := QueryCustomer.FieldByName('codigo').AsInteger;
+      Result.Name := QueryCustomer.FieldByName('nome').AsString;
+      Result.City := QueryCustomer.FieldByName('cidade').AsString;
+      Result.UF := QueryCustomer.FieldByName('uf').AsString;
     end;
   finally
-    Q.Free;
+    QueryCustomer.Free;
   end;
 end;
 
 function TOrderRepositoryFD.FindProduct(Code: Integer): TProduct;
-var Q: TFDQuery;
+var QueryProduct: TFDQuery;
 begin
   FillChar(Result, SizeOf(Result), 0);
   
-  Q := TFDQuery.Create(nil);
+  QueryProduct := TFDQuery.Create(nil);
   try
-    Q.Connection := FConn;
-    Q.SQL.Text := 'SELECT codigo, descricao, preco_venda FROM produtos WHERE codigo = :codigo';
-    Q.ParamByName('codigo').AsInteger := Code;
-    Q.Open;
+    QueryProduct.Connection := FConn;
+    QueryProduct.SQL.Text := 'SELECT codigo, descricao, preco_venda FROM produtos WHERE codigo = :codigo';
+    QueryProduct.ParamByName('codigo').AsInteger := Code;
+    QueryProduct.Open;
     
-    if not Q.IsEmpty then
+    if not QueryProduct.IsEmpty then
     begin
-      Result.Code := Q.FieldByName('codigo').AsInteger;
-      Result.Description := Q.FieldByName('descricao').AsString;
-      Result.SalePrice := Q.FieldByName('preco_venda').AsCurrency;
+      Result.Code := QueryProduct.FieldByName('codigo').AsInteger;
+      Result.Description := QueryProduct.FieldByName('descricao').AsString;
+      Result.SalePrice := QueryProduct.FieldByName('preco_venda').AsCurrency;
     end;
   finally
-    Q.Free;
+    QueryProduct.Free;
   end;
 end;
 
 function TOrderRepositoryFD.LoadOrder(OrderNumber: Int64; out Order: TOrder; out Items: TList<TOrderItem>): Boolean;
 var 
-  QOrder, QItems: TFDQuery;
-  Item: TOrderItem;
+  QueryOrderData, QueryOrderItems: TFDQuery;
+  CurrentItem: TOrderItem;
 begin
   Result := False;
   FillChar(Order, SizeOf(Order), 0);
   Items := nil;
   
-  QOrder := TFDQuery.Create(nil);
-  QItems := TFDQuery.Create(nil);
+  QueryOrderData := TFDQuery.Create(nil);
+  QueryOrderItems := TFDQuery.Create(nil);
   try
     //Dados do pedido
-    QOrder.Connection := FConn;
-    QOrder.SQL.Text := 
+    QueryOrderData.Connection := FConn;
+    QueryOrderData.SQL.Text := 
       'SELECT p.numero_pedido, p.codigo_cliente, p.data_emissao, p.valor_total, ' +
       '       c.nome, c.cidade, c.uf ' +
       'FROM pedidos p ' +
       'INNER JOIN clientes c ON p.codigo_cliente = c.codigo ' +
       'WHERE p.numero_pedido = :numero AND p.status = ''ATIVO''';
-    QOrder.ParamByName('numero').AsLargeInt := OrderNumber;
-    QOrder.Open;
+    QueryOrderData.ParamByName('numero').AsLargeInt := OrderNumber;
+    QueryOrderData.Open;
     
-    if QOrder.IsEmpty then
+    if QueryOrderData.IsEmpty then
       Exit;
     
     //Dados do pedido
-    Order.Number := QOrder.FieldByName('numero_pedido').AsLargeInt;
-    Order.CustomerId := QOrder.FieldByName('codigo_cliente').AsInteger;
-    Order.IssueDate := QOrder.FieldByName('data_emissao').AsDateTime;
-    Order.TotalValue := QOrder.FieldByName('valor_total').AsCurrency;
+    Order.Number := QueryOrderData.FieldByName('numero_pedido').AsLargeInt;
+    Order.CustomerId := QueryOrderData.FieldByName('codigo_cliente').AsInteger;
+    Order.IssueDate := QueryOrderData.FieldByName('data_emissao').AsDateTime;
+    Order.TotalValue := QueryOrderData.FieldByName('valor_total').AsCurrency;
     
     //Dados do cliente
-    Order.Customer.Code := QOrder.FieldByName('codigo_cliente').AsInteger;
-    Order.Customer.Name := QOrder.FieldByName('nome').AsString;
-    Order.Customer.City := QOrder.FieldByName('cidade').AsString;
-    Order.Customer.UF := QOrder.FieldByName('uf').AsString;
+    Order.Customer.Code := QueryOrderData.FieldByName('codigo_cliente').AsInteger;
+    Order.Customer.Name := QueryOrderData.FieldByName('nome').AsString;
+    Order.Customer.City := QueryOrderData.FieldByName('cidade').AsString;
+    Order.Customer.UF := QueryOrderData.FieldByName('uf').AsString;
     
     //Itens do pedido
     Items := TList<TOrderItem>.Create;
-    QItems.Connection := FConn;
-    QItems.SQL.Text := 
+    QueryOrderItems.Connection := FConn;
+    QueryOrderItems.SQL.Text := 
       'SELECT pp.codigo_produto, pr.descricao, pp.quantidade, pp.vlr_unitario ' +
       'FROM pedidos_produtos pp ' +
       'INNER JOIN produtos pr ON pp.codigo_produto = pr.codigo ' +
       'WHERE pp.numero_pedido = :numero ' +
       'ORDER BY pp.autoincrem';
-    QItems.ParamByName('numero').AsLargeInt := OrderNumber;
-    QItems.Open;
+    QueryOrderItems.ParamByName('numero').AsLargeInt := OrderNumber;
+    QueryOrderItems.Open;
     
-    while not QItems.Eof do
+    while not QueryOrderItems.Eof do
     begin
-      Item.ProductId := QItems.FieldByName('codigo_produto').AsInteger;
-      Item.Description := QItems.FieldByName('descricao').AsString;
-      Item.Qty := QItems.FieldByName('quantidade').AsFloat;
-      Item.UnitPrice := QItems.FieldByName('vlr_unitario').AsCurrency;
+      CurrentItem.ProductId := QueryOrderItems.FieldByName('codigo_produto').AsInteger;
+      CurrentItem.Description := QueryOrderItems.FieldByName('descricao').AsString;
+      CurrentItem.Qty := QueryOrderItems.FieldByName('quantidade').AsFloat;
+      CurrentItem.UnitPrice := QueryOrderItems.FieldByName('vlr_unitario').AsCurrency;
       
-      Items.Add(Item);
-      QItems.Next;
+      Items.Add(CurrentItem);
+      QueryOrderItems.Next;
     end;
     
     Result := True;
   finally
-    QOrder.Free;
-    QItems.Free;
+    QueryOrderData.Free;
+    QueryOrderItems.Free;
   end;
 end;
 
 procedure TOrderRepositoryFD.CancelOrder(OrderNumber: Int64);
-var Q: TFDQuery;
+var 
+  QueryCancelOrder: TFDQuery;
+  Transaction: TFDTransaction;
 begin
-  Q := TFDQuery.Create(nil);
+  Transaction := TFDTransaction.Create(nil);
+  QueryCancelOrder := TFDQuery.Create(nil);
   try
-    Q.Connection := FConn;
-    Q.SQL.Text := 'CALL sp_cancelar_pedido(:numero)';
-    Q.ParamByName('numero').AsLargeInt := OrderNumber;
-    Q.ExecSQL;
+    try
+      Transaction.Connection := FConn;
+      QueryCancelOrder.Connection := FConn;
+      QueryCancelOrder.Transaction := Transaction;
+
+      Transaction.StartTransaction;
+
+      QueryCancelOrder.SQL.Text := 'UPDATE pedidos SET status = ''CANCELADO'' WHERE numero_pedido = :numero_pedido';
+      QueryCancelOrder.ParamByName('numero_pedido').AsLargeInt := OrderNumber;
+      QueryCancelOrder.ExecSQL;
+
+      Transaction.Commit;
+    except
+      on E: Exception do
+      begin
+        if Transaction.Active then
+          Transaction.Rollback;
+        raise Exception.Create('Erro ao cancelar pedido: ' + E.Message);
+      end;
+    end;
   finally
-    Q.Free;
+    QueryCancelOrder.Free;
+    Transaction.Free;
   end;
 end;
 
